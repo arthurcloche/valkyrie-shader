@@ -71,7 +71,7 @@ float striped(vec2 uv, float size){
 
 float cells(vec2 uv){
     // Define grid resolution
-    vec2 gridRes = vec2(resolution.x * cellsX, resolution.y * cellsY); 
+    vec2 gridRes = vec2(cellsX, cellsY); 
     
     // Calculate grid cell coordinates (0 to 1 within each cell)
     vec2 cellUV = fract(uv * gridRes);

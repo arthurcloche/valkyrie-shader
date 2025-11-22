@@ -12,8 +12,8 @@ const config = {
     dissipation: 0.98,
   },
   stripes: {
-    cellsX: 0.1,
-    cellsY: 0.1,
+    cellsX: 128,
+    cellsY: 16,
     widthPow: 0.5,
     edge: 0.03, // 0.01 to 0.03,
     saturation: 8,
@@ -50,8 +50,8 @@ function setup() {
   flowFolder.add(config.flow, "dissipation", 0.8, 1.0);
 
   const stripesFolder = gui.addFolder("Stripes");
-  stripesFolder.add(config.stripes, "cellsX", 0.0, 1.0, 0.1, 0.1);
-  stripesFolder.add(config.stripes, "cellsY", 0.0, 1.0, 0.1, 0.1);
+  stripesFolder.add(config.stripes, "cellsX", 1.0, 1024.0, 1, 16);
+  stripesFolder.add(config.stripes, "cellsY", 1.0, 1024.0, 1, 64);
   stripesFolder.add(config.stripes, "widthPow", 0.1, 4, 0.01, 0.5);
   stripesFolder.add(config.stripes, "edge", 0.03, 0.05, 0.001, 0.03);
   stripesFolder.add(config.stripes, "saturation", 1.0, 8.0);
