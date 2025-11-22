@@ -11,6 +11,12 @@ uniform float time;
 uniform sampler2D flowmap;
 uniform sampler2D bloomTexture;
 
+uniform float cellsX;
+uniform float cellsY;
+uniform float widthPow;
+uniform float edge;
+uniform float saturation;
+
 // Simple pseudo-random noise
 float hash(vec2 p) {
     p = fract(p * vec2(123.34, 456.21));
@@ -65,7 +71,7 @@ float striped(vec2 uv, float size){
 
 float cells(vec2 uv){
     // Define grid resolution
-    vec2 gridRes = vec2(resolution.x * 0.1, 32.0); 
+    vec2 gridRes = vec2(resolution.x * cellsX, resolution.y * cellsY); 
     
     // Calculate grid cell coordinates (0 to 1 within each cell)
     vec2 cellUV = fract(uv * gridRes);
@@ -73,21 +79,18 @@ float cells(vec2 uv){
     vec2 cellIndex = floor(uv * gridRes) / gridRes;
     float gray = texture(flowmap, cellIndex).b; // Using blue channel as per your code
     vec2 p = cellUV - 0.5;
-    float width = pow(gray, 1./2.); 
+    float width = pow(gray, widthPow); 
    
     float halfWidth = width * 0.5;
-    float aa = 0.01; // Soft edge
+    float aa = edge; // Soft edge
     
     return 1.0 - smoothstep(halfWidth - aa, halfWidth + aa, abs(p.x));
 }
-
 
 vec4 screen(vec4 src, vec4 dst, bool clamped) {
     if (!clamped) return vec4(1.0) - (vec4(1.0) - src) * (vec4(1.0) - dst);
     return clamp(vec4(1.0) - (vec4(1.0) - src) * (vec4(1.0) - dst), 0.0, 1.0);
 }
-
-
 
 const float spacing = 8.0;
 const float thick = 4.0;
@@ -98,7 +101,6 @@ float to_stripe(float frag) {
     tri = tri - 0.5 * thick;
     return clamp(tri, 0.0, 1.0);
 }
-
 
 float offstripe(vec2 uv) {
     
@@ -115,42 +117,16 @@ float offstripe(vec2 uv) {
     return to_stripe(perturbed_y);
 }
 
-
-
-
-
-
-
 void main() {
-  vec2 uv = vTexCoord;
-  
-  vec2 slices = vec2(128.,24.);
-  vec2 m = floor(uv*slices);
-  float n = floor(uv.x*slices.x);
-    
-  vec3 fm = abs((texture(flowmap, uv).rgb-.5)*2.) ;
-  
-  vec3 tex = texture(flowmap,vec2(m/slices)).rgb;
- 
-  vec2 dist = vec2(6.1);
-   vec2 off = ((fm.xy)*.65)*(pow(fm.z,2.)*0.125);
-
-   float v = vec2(uv-(off*dist)).x;
+  vec2 uv = vTexCoord; 
    float salt = hash(uv * resolution);
     
-   vec3 f = spectrum(fract(off.x*dist.x+salt*off.x*dist.x));
-  
-  
   vec4 flow = texture(flowmap,uv);
-  float d = striped(uv, resolution.x * 0.1 );
+  float d = offstripe(uv );
   float h = cells(uv);
-  float g = fm.b ;
+  float g = flow.b ;
 
-  
-  
-
-  
   vec4 stripes = vec4(vec3(spectrum(h)),1.);
-  fragColor = stripes * 8.;
+  fragColor = (stripes * salt) * 8.;
 }
 `;
