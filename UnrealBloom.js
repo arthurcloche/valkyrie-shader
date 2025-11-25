@@ -2,7 +2,7 @@ class UnrealBloomPass {
   constructor(src, options = {}) {
     // Initial parameters
     this.strength = options.strength || 1.0;
-    this.radius = options.radius || 0.5;
+    this.radius = options.radius || 0.95;
     this.threshold = options.threshold || 0.0;
     this.levels = options.levels || 5;
 
@@ -18,6 +18,7 @@ class UnrealBloomPass {
     this.renderTargetsHorizontal = [];
     this.renderTargetsVertical = [];
     this.nMips = this.levels;
+    this.inputTexture = null;
 
     let resx = Math.round(width / 2);
     let resy = Math.round(height / 2);
@@ -62,6 +63,7 @@ class UnrealBloomPass {
   render(srcTexture) {
     // 1. Downsample / Blur passes
     let inputTexture = srcTexture;
+    this.inputTexture = srcTexture;
 
     for (let i = 0; i < this.nMips; i++) {
       const blurShader = this.seperableBlurMaterials[i];
@@ -127,6 +129,9 @@ class UnrealBloomPass {
         "blurTexture5",
         this.renderTargetsVertical[4].color
       );
+      this.compositeMaterial.setUniform("input_texture", this.inputTexture);
+
+      this.compositeMaterial.setUniform("time", millis() / 1000);
 
       plane(width, height);
     });

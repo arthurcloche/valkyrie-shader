@@ -31,7 +31,9 @@ in vec2 vTexCoord;
 out vec4 fragColor;
 
 uniform float strength;
+uniform float time;
 uniform float radius;
+uniform sampler2D input_texture;
 
 uniform sampler2D blurTexture1;
 uniform sampler2D blurTexture2;
@@ -45,6 +47,9 @@ float hash(vec2 p) {
     return fract(p.x * p.y);
 }
 
+float ease(float t) {
+    return t < 0.5 ? 2.0 * t * t : 1.0 - pow(-2.0 * t + 2.0, 2.0) / 2.0;
+}
 
 float lerpBloomFactor(const in float factor) { 
     float mirrorFactor = 1.2 - factor;
@@ -58,7 +63,7 @@ void main() {
     // Sum the mips with weights
     // Weights can be adjusted to taste or use Unreal's factors
     // Unreal factors are roughly 1.0, 0.8, 0.6, 0.4, 0.2
-    
+    vec3 c0 = texture(input_texture, vTexCoord).rgb;
     vec3 c1 = texture(blurTexture1, vTexCoord).rgb;
     vec3 c2 = texture(blurTexture2, vTexCoord).rgb;
     vec3 c3 = texture(blurTexture3, vTexCoord).rgb;
@@ -73,8 +78,10 @@ void main() {
     
     bloom = c1 * w1 + c2 * w2 + c3 * w3 + c4 * w4 + c5 * w5;
     float salt = hash(gl_FragCoord.xy);
-    bloom = bloom * strength + salt * bloom * 0.5 * strength;
-    
+    float progress = ease(min(1.0, time / 2.));
+    float str = 1. + (1.-progress) * 8.;
+    bloom = bloom * str;
+    bloom = mix(c0, bloom, progress < 0.5 ? progress : 1.- progress);
     fragColor = vec4(bloom, 1.0);
 }
 `;

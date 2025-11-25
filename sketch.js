@@ -24,12 +24,30 @@ const config = {
     radius: 0.5,
     threshold: 0.0,
   },
+  // Chromatic Aberration
+  chromatic: {
+    power: 0.5, // s_1: max distortion
+    intensity: 0.3, // s_2: distortion intensity
+    pos: 0.5, // s_3: center position
+    saturation: 1.2, // s_4: saturation adjustment
+    mix: 1.0, // s_5: blend with original
+  },
   // Debug / Output
   output: "bloom", // 'stripes', 'bloom', 'final'
 };
 
+const copyFrag = `#version 300 es
+precision mediump float;
+in vec2 vTexCoord;
+out vec4 fragColor;
+uniform sampler2D uTexture;
+void main() {
+    fragColor = texture(uTexture, vTexCoord);
+}
+`;
+
 function preload() {
-  //   img = loadImage("src.jpg");
+  img = loadImage("logo.png");
 }
 
 const DOM = document.getElementById("main-canvas");
@@ -43,7 +61,7 @@ function setup() {
 
   // --- GUI Setup ---
   gui = new lil.GUI();
-
+  /*
   const flowFolder = gui.addFolder("Flowmap");
   flowFolder.add(config.flow, "falloff", 0.0, 1.0);
   flowFolder.add(config.flow, "alpha", 0.0, 1.0);
@@ -69,10 +87,8 @@ function setup() {
 
   const outputFolder = gui.addFolder("Output");
   outputFolder.add(config, "output", ["stripes", "bloom", "flow"]);
-
+  */
   // ...
-
-  //   img.resize(w * 0.5, 0);
 
   flowmapPass = new ShaderPass(baseVert, flowFrag, { type: "pingpong" });
   stripeShader = new ShaderPass(baseVert, stripeFrag, { type: "single" });
@@ -84,35 +100,65 @@ function setup() {
     threshold: config.bloom.threshold,
   });
   bloomComposite = createFramebuffer({ format: FLOAT });
-
+  bufferPlane = createFramebuffer({ format: FLOAT });
+  bufferPaneShader = createShader(baseVert, copyFrag);
   //   // 4. Chromatic Aberration (Final Output to Screen)
   //   chromaticPass = new ShaderPass(baseVert, chromaticFrag, { type: "screen" });
 
   // 4. Output Pass (Just draws texture to screen)
-  outputPass = new ShaderPass(baseVert, outputFrag, { type: "screen" });
+  // cascadeShader = new ShaderPass(baseVert, cascadeFrag, {
+  //   type: "single",
+  //   width: "60%",
+  // });
+
+  cascadeShader = new ShaderPass(baseVert, cascadeFrag, {
+    type: "pingpong",
+  });
+
+  chromaticPass = new ShaderPass(baseVert, chromaticFrag, {
+    type: "single",
+  });
+
+  outputPass = new ShaderPass(baseVert, outputFrag, {
+    type: "screen",
+    // width: "60%",
+  });
 
   noStroke();
 }
 
 function draw() {
   // --- Step 1: Update Flowmap ---
-  flowmapPass.update({
-    time: frameCount * 0.05,
-    uTexture: flowmapPass.output.color,
-    resolution: [width, height],
-    falloff: config.flow.falloff,
-    alpha: config.flow.alpha,
-    dissipation: config.flow.dissipation,
-    mouse: getMouseUniforms().slice(0, 2),
-    velocity: getVelocityUniforms(),
+  // flowmapPass.update({
+  //   time: frameCount * 0.05,
+  //   uTexture: flowmapPass.output.color,
+  //   resolution: [width, height],
+  //   falloff: config.flow.falloff,
+  //   alpha: config.flow.alpha,
+  //   dissipation: config.flow.dissipation,
+  //   mouse: getMouseUniforms().slice(0, 2),
+  //   velocity: getVelocityUniforms(),
+  // });
+
+  cascadeShader.update({
+    uTexture: cascadeShader.output.color,
+    image_resolution: [img.width, img.height],
+    img: img,
   });
 
+  // bufferPlane.begin();
+  // clear();
+  // bufferPaneShader.setUniform("uTexture", cascadeShader.output.color);
+  // shader(bufferPaneShader);
+  // plane(width * 0.6, height);
+  // bufferPlane.end();
+  /*
   // --- Step 2: Render Stripes ---
   stripeShader.update({
     resolution: [width, height],
     image_resolution: [375, 563],
     time: millis() / 1000.0,
-    flowmap: flowmapPass.output.color,
+    flowmap: bufferPlane.color,
 
     cellsX: config.stripes.cellsX,
     cellsY: config.stripes.cellsY,
@@ -125,10 +171,7 @@ function draw() {
 
   // --- Step 3: Bloom (Unreal) ---
   // 1. Downsample & Blur
-  bloomPass.render(stripeShader.output.color);
-
-  // 2. Composite
-  bloomPass.composite(bloomComposite);
+  
 
   // --- Step 4: Output to Screen ---
   // Select output based on GUI config
@@ -140,9 +183,24 @@ function draw() {
   } else if (config.output === "flow") {
     texToDraw = flowmapPass.output.color;
   }
+*/
+  // bloomPass.render(cascadeShader.output.color);
+  // bloomPass.composite(bloomComposite);
+
+  // chromaticPass.update({
+  //   uTexture: cascadeShader.output.color,
+  //   resolution: [width, height],
+  //   time: millis() / 1000.0,
+  //   s_1: config.chromatic.power,
+  //   s_2: config.chromatic.intensity,
+  //   s_3: config.chromatic.pos,
+  //   s_4: config.chromatic.saturation,
+  //   s_5: config.chromatic.mix,
+  // });
 
   outputPass.update({
-    uTexture: texToDraw,
+    uTexture: cascadeShader.output.color,
+    uMask: bufferPlane.color,
   });
 }
 
