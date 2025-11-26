@@ -48,6 +48,7 @@ void main() {
 
 function preload() {
   img = loadImage("logo.png");
+  stroked = loadImage("logo-stroke.png");
 }
 
 const DOM = document.getElementById("main-canvas");
@@ -114,8 +115,15 @@ function setup() {
   cascadeShader = new ShaderPass(baseVert, cascadeFrag, {
     type: "pingpong",
   });
+  strokedCascadeShader = new ShaderPass(baseVert, cascadeStrokedFrag, {
+    type: "pingpong",
+  });
 
   chromaticPass = new ShaderPass(baseVert, chromaticFrag, {
+    type: "single",
+  });
+
+  linePass = new ShaderPass(baseVert, linesFrag, {
     type: "single",
   });
 
@@ -129,21 +137,31 @@ function setup() {
 
 function draw() {
   // --- Step 1: Update Flowmap ---
-  // flowmapPass.update({
-  //   time: frameCount * 0.05,
-  //   uTexture: flowmapPass.output.color,
-  //   resolution: [width, height],
-  //   falloff: config.flow.falloff,
-  //   alpha: config.flow.alpha,
-  //   dissipation: config.flow.dissipation,
-  //   mouse: getMouseUniforms().slice(0, 2),
-  //   velocity: getVelocityUniforms(),
-  // });
+  flowmapPass.update({
+    time: frameCount * 0.05,
+    uTexture: flowmapPass.output.color,
+    resolution: [width, height],
+    falloff: config.flow.falloff,
+    alpha: config.flow.alpha,
+    dissipation: config.flow.dissipation,
+    mouse: getMouseUniforms().slice(0, 2),
+    velocity: getVelocityUniforms(),
+  });
 
   cascadeShader.update({
     uTexture: cascadeShader.output.color,
     image_resolution: [img.width, img.height],
     img: img,
+  });
+  strokedCascadeShader.update({
+    uTexture: strokedCascadeShader.output.color,
+    image_resolution: [img.width, img.height],
+    img: stroked,
+  });
+
+  linePass.update({
+    uTexture: cascadeShader.output.color,
+    uFlow: flowmapPass.output.color,
   });
 
   // bufferPlane.begin();
@@ -200,6 +218,9 @@ function draw() {
 
   outputPass.update({
     uTexture: cascadeShader.output.color,
+    uStroked: strokedCascadeShader.output.color,
+    uLines: linePass.output.color,
+    uFlow: flowmapPass.output.color,
     uMask: bufferPlane.color,
   });
 }

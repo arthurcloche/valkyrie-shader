@@ -5,6 +5,9 @@ in vec2 vTexCoord;
 out vec4 fragColor;
 
 uniform sampler2D uTexture;
+uniform sampler2D uFlow;
+uniform sampler2D uLines;
+uniform sampler2D uStroked;
 uniform sampler2D uMask;
 uniform float time;
 
@@ -17,15 +20,24 @@ vec3 tint(float value){
     return pal( value, vec3(0.5,0.5,0.5),vec3(0.5,0.5,0.5),vec3(1.0,1.0,0.5),vec3(0.8,0.90,0.30) );
 }
 
+vec4 clamped(vec4 render){
+    return max( vec4(0.),min(vec4(1.), render));
+}
+
 void main() {
-    vec4 sampled = texture(uTexture, vTexCoord);
-    // float mask = sampled.r;
-    // vec3 t = mask * 2. * mix(vec3(0.65, 0.1, 0.75), vec3(0.95, 0.1, 0.85),mask) ;
-    // float progress = min(1., time / 3.5);
-    // // Preserve black and white, tint grays (parabola peaks at 0.5)
-    // float grayness = 4.0 * mask * (1.0 - mask);
-    // t = mix(vec3(mask), t, grayness);
-    // t = mix(t,vec3(mask), progress );
-    fragColor = sampled;
+    vec2 uv = vTexCoord;
+    float sampled = texture(uTexture, vTexCoord).r;
+    float stroked = texture(uStroked, vTexCoord).r;
+    float lined = texture(uLines, vTexCoord).r;
+    float flow = texture(uFlow, vTexCoord).b;
+
+
+
+    float render = lined * sampled * 2. + sampled + flow * lined  + stroked * (1.-sampled);
+    vec3 colored = vec3(render);
+    
+    fragColor = vec4(colored, 1.);
+    
+    
 }
 `;

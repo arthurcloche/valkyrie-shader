@@ -1,4 +1,4 @@
-const cascadeFrag = `#version 300 es
+const cascadeStrokedFrag = `#version 300 es
 precision mediump float;
 
 in vec2 vTexCoord;
@@ -144,22 +144,21 @@ void main() {
 
     uv -= .5;
     
-    float progress = ease(min(1.0, time / 3.0));
-    float saltprogress = ease(min(1.0, time / 5.0));
-    float blend_progress = ease(min(1.0, time / 5.));
+    float progress = ease(min(1.0, time / 1.5));
+    float blend_progress = ease(min(1.0, time / 5.5));
     float off = (-0.05) * progress;
     float salt = hash13(vec3(gl_FragCoord.xy, 3.) + time * 500. + 50.) * 2.-1.;
     float salt2 = hash13(vec3(gl_FragCoord.xy * 256., 7.) + time * 1100. + 31.) * 2.-1.;
      
     uv += vec2(0.,off );
-    uv *= vec2(.985,.975);
-    uv -=  vec2(-salt2 * 0.025,  salt * 0.025) * (1.-saltprogress) * .5;
+    // uv *= .99;
+    uv -=  vec2(-salt2 * 0.055,  salt * 0.025) * (1.-progress) * .5;
     uv += .5;
     
-    vec3 prev = texture(uTexture, uv  ).rgb * 0.995 ;
+    vec3 prev = texture(uTexture, uv  ).rgb * 0.97 ;
     vec3 tint = tint(prev.x);
     vec3 color = mix(prev, samp, blend_progress);
     
-    fragColor = vec4(color, 0.2);
+    fragColor = vec4(color, 0.125);
 }
 `;
