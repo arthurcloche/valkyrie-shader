@@ -26,7 +26,6 @@ class ShaderPass {
     // p5 global width and height
     this.width = this.options.width || width;
     this.height = this.options.height || height;
-
     this.buffer = this._createBuffer();
   }
 
@@ -59,7 +58,7 @@ class ShaderPass {
     return { width: widthVal, height: heightVal };
   }
 
-  update(uniforms = {}, drawCallback = null) {
+  update(uniforms = {}, drawCallback = null, resetCallback = null) {
     const target =
       this.options.type === "pingpong" ? this.buffer.src : this.buffer;
 
@@ -71,11 +70,10 @@ class ShaderPass {
       // Use ortho to ensure 1:1 pixel mapping and avoid perspective shrinking in feedback loops
       // When drawing to a framebuffer, the viewport matches the framebuffer size.
       // Using ortho with exactly the framebuffer dimensions maps coordinates -width/2..width/2 to the full buffer.
-      ortho(-w / 2, w / 2, -h / 2, h / 2);
+      // ortho(-w / 2, w / 2, -h / 2, h / 2);
 
-      // Default uniforms
       this.shader.setUniform("resolution", [w, h]);
-      this.shader.setUniform("time", millis() / 1000.0);
+      this.shader.setUniform("time", frameCount * 0.05);
 
       // Custom uniforms
       for (const key in uniforms) {
@@ -102,6 +100,15 @@ class ShaderPass {
     } else {
       // Draw to screen
       drawOps();
+    }
+  }
+
+  reset() {
+    if (this.options.type === "pingpong") {
+      this.buffer.src.draw(() => clear());
+      this.buffer.dst.draw(() => clear());
+    } else if (this.buffer) {
+      this.buffer.draw(() => clear());
     }
   }
 

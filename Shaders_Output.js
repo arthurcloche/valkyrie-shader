@@ -31,13 +31,10 @@ void main() {
     float lined = texture(uLines, vTexCoord).r;
     float flow = texture(uFlow, vTexCoord).b;
 
-
-
-    float render = lined * sampled * 2. + sampled + flow * lined  + stroked * (1.-sampled);
-    vec3 colored = vec3(render);
+    float render = lined * sampled * 2. + sampled + flow * lined ;
     
-    fragColor = vec4(colored, 1.);
-    
-    
+    vec3 colored =  mix( vec3(render),tint(render + 1. + uv.y * .5 + sin(time) * .25) , 1.-render) * 4.;
+    vec3 toscreen =  mix( vec3(0.), colored, render);
+    fragColor = vec4(toscreen, 1.);
 }
 `;

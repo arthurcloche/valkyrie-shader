@@ -152,7 +152,7 @@ void main() {
     float salt2 = hash13(vec3(gl_FragCoord.xy * 256., 7.) + time * 1100. + 31.) * 2.-1.;
      
     uv += vec2(0.,off );
-    uv *= vec2(.985,.975);
+    uv *= vec2(.925,.955);
     uv -=  vec2(-salt2 * 0.025,  salt * 0.025) * (1.-saltprogress) * .5;
     uv += .5;
     

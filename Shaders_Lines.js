@@ -40,8 +40,9 @@ void main() {
     vec2 fragcoord = vTexCoord * resolution;
     float y_samp = fragcoord.y - mod(fragcoord.y, spacing);
     vec2 uv = vec2(fragcoord.x, y_samp)/resolution;
-    
-    float bright = texture(uTexture, uv).r * 2. + texture(uFlow, uv).r * 2. ;
+    vec3 flow_rgb = texture(uFlow, uv).rgb;
+    float flow = dot(flow_rgb, vec3(0.2126, 0.7152, 0.0722)); // sRGB luminance
+    float bright = texture(uTexture, uv).r * 1. + flow* 1. ;
     bright = clamp(bright, 0.0, 1.0);
     float perturbed_y = fragcoord.y + spacing * bright;
     vec3 col = vec3(to_stripe(perturbed_y, bright * 2.));
