@@ -106,13 +106,14 @@ vec2 fit(vec2 uv, vec2 resolution, vec2 imageResolution) {
     return centeredUV;
 }
 
-vec2 fitScaled(vec2 uv, vec2 resolution, vec2 imageResolution, float widthPercent) {
+vec2 fitScaled(vec2 uv, vec2 resolution, vec2 imageResolution, float maxWidthPx) {
     float canvasAspect = resolution.x / resolution.y;
     float imageAspect = imageResolution.x / imageResolution.y;
     
-    // Image occupies widthPercent of canvas width, height is proportional
-    float widthFrac = widthPercent;
-    float heightFrac = widthPercent / imageAspect * canvasAspect;
+    // Use 800px max, or 90% of canvas width if smaller
+    float displayWidth = min(maxWidthPx, resolution.x * 0.9);
+    float widthFrac = displayWidth / resolution.x;
+    float heightFrac = widthFrac / imageAspect * canvasAspect;
     
     // Center horizontally, align top vertically
     float marginX = (1.0 - widthFrac) / 2.0;
@@ -129,7 +130,7 @@ vec2 fitScaled(vec2 uv, vec2 resolution, vec2 imageResolution, float widthPercen
 
 void main() {
     vec2 uv = vTexCoord;
-    vec2 imgUV = fitScaled(uv, resolution, image_resolution, 0.6);
+    vec2 imgUV = fitScaled(uv, resolution, image_resolution, 800.0);
     
     // Check if we're outside the image bounds
     bool inBounds = imgUV.x >= 0.0 && imgUV.x <= 1.0 && imgUV.y >= 0.0 && imgUV.y <= 1.0;

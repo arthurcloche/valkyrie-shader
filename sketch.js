@@ -186,8 +186,12 @@ function windowResized() {
   let w = windowWidth;
   resizeCanvas(w, h);
 
-  // Resize Bloom Buffers
-  // if (bloomPass) bloomPass.setSize(w, h);
+  // Resize all shader pass framebuffers
+  flowmapPass.resize();
+  stripeShader.resize();
+  cascadeShader.resize();
+  linePass.resize();
+  outputPass.resize();
 }
 
 // --- Helpers ---

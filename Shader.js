@@ -65,14 +65,14 @@ class ShaderPass {
     const drawOps = () => {
       // Ensure we are using this shader
       shader(this.shader);
-      const { width: w, height: h } = this.getSize();
+      // const { width: w, height: h } = this.getSize();
 
       // Use ortho to ensure 1:1 pixel mapping and avoid perspective shrinking in feedback loops
       // When drawing to a framebuffer, the viewport matches the framebuffer size.
       // Using ortho with exactly the framebuffer dimensions maps coordinates -width/2..width/2 to the full buffer.
       // ortho(-w / 2, w / 2, -h / 2, h / 2);
 
-      this.shader.setUniform("resolution", [w, h]);
+      this.shader.setUniform("resolution", [width, height]);
       this.shader.setUniform("time", frameCount * 0.05);
 
       // Custom uniforms
@@ -84,7 +84,7 @@ class ShaderPass {
       if (drawCallback) {
         drawCallback();
       } else {
-        plane(w, h);
+        plane(width, height);
       }
     };
 
@@ -109,6 +109,18 @@ class ShaderPass {
       this.buffer.dst.draw(() => clear());
     } else if (this.buffer) {
       this.buffer.draw(() => clear());
+    }
+  }
+
+  resize() {
+    if (this.options.type === "screen") return;
+
+    const { width: w, height: h } = this.getSize();
+    if (this.options.type === "pingpong") {
+      this.buffer.src.resize(w, h);
+      this.buffer.dst.resize(w, h);
+    } else if (this.buffer) {
+      this.buffer.resize(w, h);
     }
   }
 
