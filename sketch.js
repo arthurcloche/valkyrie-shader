@@ -34,6 +34,24 @@ const config = {
     saturation: 1.2, // s_4: saturation adjustment
     mix: 1.0, // s_5: blend with original
   },
+  // Cascade
+  cascade: {
+    copies_offset: 0.5,
+    spread_x: 0.75,
+    spread_y: 0.45,
+    grain: 0.25,
+    grain_strength: 0.5,
+    fade: 0.05,
+    alpha: 0.2,
+    speed: 3.0,
+    grain_speed: 5.0,
+    blend_progress: 5.5,
+  },
+  // Lines
+  lines: {
+    spacing: 16.0,
+    thick: 1.5,
+  },
   // Debug / Output
   output: "bloom", // 'stripes', 'bloom', 'final'
 };
@@ -56,7 +74,6 @@ function preload() {
 const DOM = document.getElementById("main-canvas");
 
 function setup() {
-  // Fixed height of 700px, Width matches the window width
   let h = 700;
   let w = windowWidth;
 
@@ -70,60 +87,27 @@ function setup() {
   flowFolder.add(config.flow, "alpha", 0.0, 1.0);
   flowFolder.add(config.flow, "dissipation", 0.8, 1.0);
 
-  const stripesFolder = gui.addFolder("Stripes");
-  stripesFolder.add(config.stripes, "cellsX", 1.0, 1024.0, 1, 16);
-  stripesFolder.add(config.stripes, "cellsY", 1.0, 1024.0, 1, 64);
-  stripesFolder.add(config.stripes, "widthPow", 0.1, 4, 0.01, 0.5);
-  stripesFolder.add(config.stripes, "edge", 0.03, 0.05, 0.001, 0.03);
-  stripesFolder.add(config.stripes, "saturation", 1.0, 8.0);
+  const cascadeFolder = gui.addFolder("Cascade");
+  cascadeFolder.add(config.cascade, "copies_offset", -1.0, 1.0);
+  cascadeFolder.add(config.cascade, "spread_x", 0.0, 2.0);
+  cascadeFolder.add(config.cascade, "spread_y", 0.0, 2.0);
+  cascadeFolder.add(config.cascade, "grain", 0.0, 1.0);
+  cascadeFolder.add(config.cascade, "grain_strength", 0.0, 1.0);
+  cascadeFolder.add(config.cascade, "fade", 0.0, 0.2);
+  cascadeFolder.add(config.cascade, "alpha", 0.0, 1.0);
+  cascadeFolder.add(config.cascade, "speed", 0.0, 10.0);
+  cascadeFolder.add(config.cascade, "grain_speed", 0.0, 10.0);
+  cascadeFolder.add(config.cascade, "blend_progress", 0.0, 10.0);
 
-  // const bloomFolder = gui.addFolder("Bloom");
-  // bloomFolder
-  //   .add(config.bloom, "strength", 0.0, 5.0)
-  //   .onChange((v) => (bloomPass.strength = v));
-  // bloomFolder
-  //   .add(config.bloom, "radius", 0.0, 1.5)
-  //   .onChange((v) => (bloomPass.radius = v));
-  // bloomFolder
-  //   .add(config.bloom, "threshold", 0.0, 1.0)
-  //   .onChange((v) => (bloomPass.threshold = v));
-
-  const outputFolder = gui.addFolder("Output");
-  outputFolder.add(config, "output", ["stripes", "bloom", "flow"]);
-
-  // ...
+  const linesFolder = gui.addFolder("Lines");
+  linesFolder.add(config.lines, "spacing", 1.0, 64.0);
+  linesFolder.add(config.lines, "thick", 0.1, 8.0);
 
   flowmapPass = new ShaderPass(baseVert, flowFrag, { type: "pingpong" });
-  stripeShader = new ShaderPass(baseVert, stripeFrag, { type: "single" });
-
-  // 3. Bloom Pass (Unreal Bloom)
-  // bloomPass = new UnrealBloomPass(null, {
-  //   strength: config.bloom.strength,
-  //   radius: config.bloom.radius,
-  //   threshold: config.bloom.threshold,
-  // });
-  // bloomComposite = createFramebuffer({ format: FLOAT });
-  // bufferPlane = createFramebuffer({ format: FLOAT });
-  // bufferPaneShader = createShader(baseVert, copyFrag);
-  //   // 4. Chromatic Aberration (Final Output to Screen)
-  //   chromaticPass = new ShaderPass(baseVert, chromaticFrag, { type: "screen" });
-
-  // 4. Output Pass (Just draws texture to screen)
-  // cascadeShader = new ShaderPass(baseVert, cascadeFrag, {
-  //   type: "single",
-  //   width: "60%",
-  // });
 
   cascadeShader = new ShaderPass(baseVert, cascadeFrag, {
     type: "pingpong",
   });
-  // strokedCascadeShader = new ShaderPass(baseVert, cascadeStrokedFrag, {
-  //   type: "pingpong",
-  // });
-
-  // chromaticPass = new ShaderPass(baseVert, chromaticFrag, {
-  //   type: "single",
-  // });
 
   linePass = new ShaderPass(baseVert, linesFrag, {
     type: "single",
@@ -131,7 +115,6 @@ function setup() {
 
   outputPass = new ShaderPass(baseVert, outputFrag, {
     type: "screen",
-    // width: "60%",
   });
 
   noStroke();
@@ -154,6 +137,16 @@ function draw() {
     uTexture: cascadeShader.output.color,
     image_resolution: [img.width, img.height],
     img: img,
+    copies_offset: config.cascade.copies_offset,
+    spread_x: config.cascade.spread_x,
+    spread_y: config.cascade.spread_y,
+    grain: config.cascade.grain,
+    grain_strength: config.cascade.grain_strength,
+    fade: config.cascade.fade,
+    alpha: config.cascade.alpha,
+    speed: config.cascade.speed,
+    grain_speed: config.cascade.grain_speed,
+    blend_progress: config.cascade.blend_progress,
   });
   // strokedCascadeShader.update({
   //   uTexture: strokedCascadeShader.output.color,
@@ -164,6 +157,8 @@ function draw() {
   linePass.update({
     uTexture: cascadeShader.output.color,
     uFlow: flowmapPass.output.color,
+    spacing: config.lines.spacing,
+    thick: config.lines.thick,
   });
 
   outputPass.update({

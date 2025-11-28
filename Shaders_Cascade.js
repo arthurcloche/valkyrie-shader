@@ -127,40 +127,41 @@ vec2 fitScaled(vec2 uv, vec2 resolution, vec2 imageResolution, float maxWidthPx)
     return imageUV;
 }
 
+uniform float copies_offset; // 0.5
+uniform float spread_x; // 0.75
+uniform float spread_y; // 0.45
+uniform float grain;  // .25
+uniform float grain_strength; // 0.5
+uniform float fade; // 0.05
+uniform float alpha; // 0.2
+
+uniform float speed; //3.
+uniform float grain_speed; // 5.
+uniform float blend_progress; // 5.5
 
 void main() {
     vec2 uv = vTexCoord;
     vec2 imgUV = fitScaled(uv, resolution, image_resolution, 800.0);
-    
-    // Check if we're outside the image bounds
     bool inBounds = imgUV.x >= 0.0 && imgUV.x <= 1.0 && imgUV.y >= 0.0 && imgUV.y <= 1.0;
     vec3 samp = inBounds ? texture(img, imgUV).rgb : vec3(0.0);
-    // float ry = repeat(uv.y);
-    
-    // vec3 samp = vec3(0.0);
-    // if (ry >= 0.0) {
-    //     vec2 imguv = vec2(uv.x, ry);
-    //    ;
-    // }
-
     uv -= .5;
     
-    float progress = ease(min(1.0, time / 3.0));
-    float saltprogress = ease(min(1.0, time / 5.0));
-    float blend_progress = ease(min(1.0, time / 5.));
-    float off = (-0.05) * progress;
+    float progress = ease(min(1.0, time / speed));
+    float saltprogress = ease(min(1.0, time / grain_speed));
+    float blend_progress = ease(min(1.0, time / blend_progress));
+    float off = (-copies_offset * 0.1) * progress;
     float salt = hash13(vec3(gl_FragCoord.xy, 3.) + time * 500. + 50.) * 2.-1.;
     float salt2 = hash13(vec3(gl_FragCoord.xy * 256., 7.) + time * 1100. + 31.) * 2.-1.;
      
     uv += vec2(0.,off );
-    uv *= vec2(.925,.955);
-    uv -=  vec2(-salt2 * 0.025,  salt * 0.025) * (1.-saltprogress) * .5;
+    uv *= vec2(1.-(spread_x/100.),1.-(spread_y/100.));
+    uv -=  vec2(-salt2 * grain/10.,  salt * grain/10.) * (1.-saltprogress) * .5;
     uv += .5;
     
-    vec3 prev = texture(uTexture, uv  ).rgb * 0.995 ;
+    vec3 prev = texture(uTexture, uv  ).rgb * (1.-fade) ;
     vec3 tint = tint(prev.x);
     vec3 color = mix(prev, samp, blend_progress);
     
-    fragColor = vec4(color, 0.2);
+    fragColor = vec4(color, alpha);
 }
 `;
