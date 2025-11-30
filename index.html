@@ -3,86 +3,189 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Valkyrie Shader</title>
-
     <style>
-      body {
+      * {
         margin: 0;
         padding: 0;
-        overflow: hidden;
-        background: #444;
-        
-        height: 100vh;
+        box-sizing: border-box;
       }
-      .background-canvas {
+      
+      body {
+        background: #111;
+        color: #fff;
+        font-family: system-ui, sans-serif;
+      }
+
+      /* Hero section */
+      .hero {
         height: 700px;
+        width: 100%;
         position: relative;
-        /* Width should match the container or viewport */
-        width: 100vw; 
-        /* Centers content */
+      }
+
+      /* Content sections - simulating page content */
+      .content {
+        padding: 100px 40px;
+        max-width: 800px;
+        margin: 0 auto;
+        text-align: center;
+      }
+
+      .content h2 {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+      }
+
+      .content p {
+        font-size: 1.1rem;
+        line-height: 1.6;
+        opacity: 0.8;
+        margin-bottom: 1rem;
+      }
+
+      /* Spacer to test intersection observer */
+      .spacer {
+        height: 150vh;
+        background: linear-gradient(to bottom, #111 0%, #1a1a2e 50%, #111 100%);
         display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .spacer p {
+        opacity: 0.3;
+        font-size: 1.5rem;
+      }
+
+      /* Footer section */
+      .footer {
+        height: 500px;
+        width: 100%;
+        position: relative;
+      }
+
+      /* Overlay content on top of shader */
+      .overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
-      }
-      canvas {
-        display: block;
-        height: 100%; 
-        width: 100%; /* Fill the container width */
-      }
-      .layout{
-      position: absolute;
-      left: 0;
-      right: 0;
-      top: 0;
-      bottom: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      gap: 60px;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      pointer-events: none;
+        gap: 40px;
+        pointer-events: none;
+        z-index: 1;
       }
 
-      .logo{
-        max-width: 700px;
-        width : 60%;
-      }
-      .copy{
-        max-width: 700px;
-        width : 60%;
+      .overlay img {
+        max-width: 60%;
+        width: 700px;
+        pointer-events: auto;
       }
 
+      /* Debug indicator */
+      .debug-indicator {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(0,0,0,0.8);
+        padding: 10px 15px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-family: monospace;
+        z-index: 9999;
+      }
+      .debug-indicator span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 8px;
+      }
+      .debug-indicator .active { background: #4ade80; }
+      .debug-indicator .inactive { background: #f87171; }
     </style>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.5/p5.min.js"></script>
-    
   </head>
   <body>
-    <div class="background-canvas">
-      <canvas id="main-canvas"></canvas>
-      <!-- <div class="layout" ">
-        <img src="logo.png" class="logo" style="pointer-events: auto;">
-        <img src="copy.png" class="copy" style="pointer-events: auto;">
-      </div> -->
+
+    <section class="hero" id="hero-container">
+      <div class="overlay">
+  
+      </div>
+    </section>
+
+    
+
+    <section class="spacer">
+      <p>↓ Scroll to see footer effect trigger ↓</p>
+    </section>
+
+    <section class="footer" id="footer-container">
+      <div class="overlay">
+  
+      </div>
+    </section>
+
+    <div class="debug-indicator">
+      <div><span id="hero-status" class="inactive"></span>Hero: <span id="hero-text">stopped</span></div>
+      <div><span id="footer-status" class="inactive"></span>Footer: <span id="footer-text">stopped</span></div>
     </div>
+
+    <script src="shaders.js"></script>
+    <script src="ValkyrieEffect.js"></script>
     
-    <script src="Shaders_Base.js"></script>
-    <script src="Shaders_Stripe.js"></script>
-    <script src="Shaders_Flow.js"></script>
-    <script src="Shaders_Bloom.js"></script>
-    <script src="Shaders_Output.js"></script>
-    <script src="Shaders_Cascade.js"></script>
-    <script src="Shaders_CascadeStroked.js"></script>
-    <script src="Shaders_Lines.js"></script>
-    <script src="Shaders_Chromatic.js"></script>
-    <script src="Shader.js"></script>
-    <script src="UnrealBloom.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19"></script>
-    <script src="sketch.js"></script>
     
+    <script>
+      // ============================================
+      // HERO EFFECT
+      // ============================================
+      const heroEffect = new ValkyrieEffect('#hero-container', {
+        logoUrl: 'logo.png',
+        logoMaxWidth: 800,
+        loopDuration: 10,
+      });
+
+      // ============================================
+      // FOOTER EFFECT
+      // ============================================
+      const footerEffect = new ValkyrieEffect('#footer-container', {
+        logoUrl: 'logo.png',
+        logoMaxWidth: 800,
+        loopDuration: 12,
+        lines: {
+          spacing: 12,
+          thick: 1.5,
+        },
+        cascade: {
+          copies_offset: 0.3,
+          grain: 0.15,
+        }
+      });
+
+      // ============================================
+      // DEBUG: Update status indicators
+      // ============================================
+      function updateDebug() {
+        const heroStatus = document.getElementById('hero-status');
+        const heroText = document.getElementById('hero-text');
+        const footerStatus = document.getElementById('footer-status');
+        const footerText = document.getElementById('footer-text');
+
+        heroStatus.className = heroEffect.running ? 'active' : 'inactive';
+        heroText.textContent = heroEffect.running ? 'running' : 'stopped';
+        
+        footerStatus.className = footerEffect.running ? 'active' : 'inactive';
+        footerText.textContent = footerEffect.running ? 'running' : 'stopped';
+      }
+      setInterval(updateDebug, 100);
+
+      // ============================================
+      // Optional: GUI for hero effect (remove for production)
+      // ============================================
+      const gui = new lil.GUI();
+      heroEffect.setupGUI(gui);
+    </script>
   </body>
 </html>
-

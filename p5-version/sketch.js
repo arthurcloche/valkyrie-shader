@@ -68,8 +68,8 @@ void main() {
 `;
 
 function preload() {
-  img = loadImage("logo.png");
-  stroked = loadImage("logo-stroke.png");
+  img = loadImage("../logo.png");
+  stroked = loadImage("../logo-stroke.png");
 }
 
 const DOM = document.getElementById("main-canvas");

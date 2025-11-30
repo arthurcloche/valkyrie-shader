@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valkyrie Shader (p5.js version)</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #444;
+        height: 100vh;
+      }
+      .background-canvas {
+        height: 700px;
+        position: relative;
+        width: 100vw; 
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      canvas {
+        display: block;
+        height: 100%; 
+        width: 100%;
+      }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.5/p5.min.js"></script>
+  </head>
+  <body>
+    <div class="background-canvas">
+      <canvas id="main-canvas"></canvas>
+    </div>
+    
+    <script src="Shaders_Base.js"></script>
+    <script src="Shaders_Stripe.js"></script>
+    <script src="Shaders_Flow.js"></script>
+    <script src="Shaders_Bloom.js"></script>
+    <script src="Shaders_Output.js"></script>
+    <script src="Shaders_Cascade.js"></script>
+    <script src="Shaders_CascadeStroked.js"></script>
+    <script src="Shaders_Lines.js"></script>
+    <script src="Shaders_Chromatic.js"></script>
+    <script src="Shader.js"></script>
+    <script src="UnrealBloom.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19"></script>
+    <script src="sketch.js"></script>
+  </body>
+</html>
+
