@@ -1,6 +1,7 @@
 let stripeShader, flowmapPass, bloomPass, chromaticPass, outputPass;
 let bloomComposite; // FBO for bloom result
 let img;
+let logoBuffer; // offscreen canvas for logo
 let gui;
 
 // hacky loop duration : to readjust in the shader class
@@ -49,7 +50,7 @@ const config = {
   },
   // Lines
   lines: {
-    spacing: 16.0,
+    spacing: 8.0,
     thick: 1.5,
   },
   // Debug / Output
@@ -117,14 +118,34 @@ function setup() {
     type: "screen",
   });
 
+  drawLogoBuffer();
   noStroke();
+}
+
+function drawLogoBuffer() {
+  // Create or recreate the offscreen buffer at canvas size
+  if (logoBuffer) logoBuffer.remove();
+  logoBuffer = createGraphics(width, height);
+  logoBuffer.background(0);
+
+  // Calculate logo dimensions to fit width (max 800px or 90% of canvas)
+  const maxWidth = min(800, width * 0.9);
+  const scale = maxWidth / img.width;
+  const logoW = img.width * scale;
+  const logoH = img.height * scale;
+
+  // Center horizontally, top margin
+  const x = (width - logoW) / 2;
+  const y = height * 0.025;
+
+  logoBuffer.image(img, x, y, logoW, logoH);
 }
 
 function draw() {
   // --- Step 1: Update Flowmap ---
   flowmapPass.update({
-    time: frameCount * 0.05,
     uTexture: flowmapPass.output.color,
+    time: millis() / 1000,
     resolution: [width, height],
     falloff: config.flow.falloff,
     alpha: config.flow.alpha,
@@ -135,8 +156,7 @@ function draw() {
 
   cascadeShader.update({
     uTexture: cascadeShader.output.color,
-    image_resolution: [img.width, img.height],
-    img: img,
+    img: logoBuffer,
     copies_offset: config.cascade.copies_offset,
     spread_x: config.cascade.spread_x,
     spread_y: config.cascade.spread_y,
@@ -181,9 +201,11 @@ function windowResized() {
   let w = windowWidth;
   resizeCanvas(w, h);
 
+  // Redraw logo at new size
+  drawLogoBuffer();
+
   // Resize all shader pass framebuffers
   flowmapPass.resize();
-  stripeShader.resize();
   cascadeShader.resize();
   linePass.resize();
   outputPass.resize();
@@ -192,6 +214,8 @@ function windowResized() {
 // --- Helpers ---
 
 let mouseVec, pmouseVec, velocityVec;
+let smoothVelocity = null; // persisted between frames
+
 function getMouseUniforms() {
   const mx = constrain(mouseX, 0, width) / width;
   const my = constrain(mouseY, 0, height) / height;
@@ -206,7 +230,22 @@ function getVelocityUniforms() {
 
   mouseVec = createVector(mx, my);
   pmouseVec = createVector(pmx, pmy);
-  velocityVec = mouseVec.copy().sub(pmouseVec).mult(1).normalize();
 
-  return [velocityVec.x, velocityVec.y];
+  // Raw velocity this frame
+  const rawVel = mouseVec.copy().sub(pmouseVec);
+  const hasMotion = rawVel.mag() > 0.0001;
+
+  // Initialize smooth velocity if needed
+  if (!smoothVelocity) smoothVelocity = createVector(0, 0);
+
+  if (hasMotion) {
+    // Lerp towards normalized velocity when moving
+    const targetVel = rawVel.copy().normalize();
+    smoothVelocity.lerp(targetVel, 0.3);
+  } else {
+    // Decay towards zero when stopped
+    smoothVelocity.mult(0.95);
+  }
+
+  return [smoothVelocity.x, smoothVelocity.y];
 }

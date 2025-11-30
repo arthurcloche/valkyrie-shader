@@ -16,6 +16,7 @@ uniform float dissipation;
 uniform vec2 mouse;
 uniform vec2 velocity;
 
+
 // Simplex 2D noise
 vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
 
@@ -43,28 +44,24 @@ float snoise(vec2 v) {
 }
 
 void main() {
-  vec2 uv = fract(vTexCoord); // Repeat the texture on both axes
+  vec2 uv = vTexCoord;
   vec4 color = texture(uTexture, uv) * dissipation;
 
-  // Apply wrapping to the cursor position
-  vec2 cursor = vec2(mod(uv.x - fract(mouse.x-.5), 1.0),uv.y - (mouse.y-.5));
-  
-  // Adjust cursor to center it around (0.5, 0.5)
-  cursor -= 0.5;
+  // Cursor position relative to UV
+  vec2 cursor = uv - mouse;
   cursor.x *= R.x / R.y;
-  cursor += 0.5;
 
   // Blob distortion using simplex noise
-  vec2 fromCenter = cursor - 0.5;
-  float angle = atan(fromCenter.y, fromCenter.x);
-  float dist = length(fromCenter);
+  float angle = atan(cursor.y, cursor.x);
+  float dist = length(cursor);
   
-  // Noise based on angle around the cursor, animated with time
-  float noiseVal = snoise(vec2(angle * PI * 0.25, dist ) + time * 0.1 + length(velocity)) * 0.25;
+  // Use sin/cos for seamless looping noise around the circle
+  vec2 loopCoord = vec2(cos(angle + time + velocity .y ), sin(angle + time + velocity .x)) * 1.0;
+  float noiseVal = snoise(loopCoord + dist + time * 0.1 + length(velocity)) * 0.125;
   float blobDist = dist * (1.0 + noiseVal);
 
   vec3 stamp = vec3(velocity * vec2(1, -1),
-                    1.0 - pow(1.0 - min(1.0, length(velocity)), 4.0))*1.;
+                    1.0 - pow(1.0 - min(1.0, length(velocity * (1.-blobDist))), 1.0))*2.;
   
   float falloff = smoothstep(falloff, 0.0, blobDist) * alpha;
   color.rgb = mix(color.rgb, stamp, vec3(falloff));

@@ -24,10 +24,20 @@ vec4 clamped(vec4 render){
     return max( vec4(0.),min(vec4(1.), render));
 }
 
+float ease(float t) {
+    return t < 0.5 ? 2.0 * t * t : 1.0 - pow(-2.0 * t + 2.0, 2.0) / 2.0;
+}
+
+vec3 ACES(vec3 x)
+{
+    x = clamp(x, -40.0, 40.0);
+    vec3 exp_neg_2x = exp(-2.0 * x);
+    return -1.0 + 2.0 / (1.0 + exp_neg_2x);
+}
+
 void main() {
     vec2 uv = vTexCoord;
     float sampled = texture(uTexture, vTexCoord).r;
-    float stroked = texture(uStroked, vTexCoord).r;
     float lined = texture(uLines, vTexCoord).r;
     float flow = texture(uFlow, vTexCoord).b;
 
@@ -35,6 +45,8 @@ void main() {
     
     vec3 colored =  mix( vec3(render),tint(render + 1. + uv.y * .5 + sin(time) * .25) , 1.-render) * 4.;
     vec3 toscreen =  mix( vec3(0.), colored, render);
-    fragColor = vec4(toscreen, 1.);
+    float fadein = ease(min(1.0, time / 3.0));
+    vec3 intro = mix(vec3(0.), toscreen, fadein);
+    fragColor = vec4(ACES(vec3(intro)), 1.);
 }
 `;
