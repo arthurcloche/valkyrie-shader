@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valkyrie Effect - Web Component</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        background: #111;
+        color: #fff;
+        font-family: system-ui, sans-serif;
+      }
+
+      .hero {
+        height: 700px;
+        width: 100%;
+      }
+
+      .spacer {
+        height: 150vh;
+        background: linear-gradient(to bottom, #111 0%, #1a1a2e 50%, #111 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .spacer p {
+        opacity: 0.3;
+        font-size: 1.5rem;
+      }
+
+      .footer {
+        height: 500px;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- Hero: just use the custom element! -->
+    <section class="hero">
+      <valkyrie-effect logo="../logo.png" logo-max-width="800"></valkyrie-effect>
+    </section>
+
+    <section class="spacer">
+      <p>↓ Scroll to see footer effect ↓</p>
+    </section>
+
+    <!-- Footer: same element, different config -->
+    <section class="footer">
+      <valkyrie-effect logo="../logo.png" logo-max-width="800"></valkyrie-effect>
+    </section>
+
+    <!-- Single script import -->
+    <script src="valkyrie-effect.js"></script>
+  </body>
+</html>
+
