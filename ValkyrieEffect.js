@@ -32,7 +32,9 @@ class ValkyrieEffect {
       },
       logoUrl: "logo.png",
       logoMaxWidth: 800,
-      loopDuration: 10, // seconds before reset
+      logoPosition: "hero",
+      logoClipTop: 30,
+
       ...options,
     };
 
@@ -270,16 +272,14 @@ class ValkyrieEffect {
     // Get CSS pixel dimensions (not device pixels)
     const rect = this.container.getBoundingClientRect();
     const cssWidth = rect.width;
-    const cssHeight = rect.height;
+    const dpr = this.width / cssWidth;
 
     // Calculate scaled dimensions in CSS pixels, then scale to device pixels
-    const dpr = this.width / cssWidth;
     const maxWidth = Math.min(this.config.logoMaxWidth, cssWidth * 0.9);
     const scale = maxWidth / img.width;
     const logoW = img.width * scale * dpr;
     const logoH = img.height * scale * dpr;
     const x = (this.width - logoW) / 2;
-    const y = this.height * 0.025;
 
     // Draw to offscreen canvas
     const offscreen = document.createElement("canvas");
@@ -288,7 +288,28 @@ class ValkyrieEffect {
     const ctx = offscreen.getContext("2d");
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, this.width, this.height);
-    ctx.drawImage(img, x, y, logoW, logoH);
+
+    if (this.config.logoPosition === "footer") {
+      // Footer: clip top of logo, align to bottom
+      const clipTop = this.config.logoClipTop * scale * dpr;
+      const clippedH = logoH - clipTop;
+      const y = this.height - clippedH;
+      // drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+      ctx.drawImage(
+        img,
+        0,
+        this.config.logoClipTop, // source x, y (clip from top)
+        img.width,
+        img.height - this.config.logoClipTop, // source width, height
+        x,
+        y, // dest x, y
+        logoW,
+        clippedH // dest width, height
+      );
+    } else {
+      // Hero: align to top, no padding
+      ctx.drawImage(img, x, 0, logoW, logoH);
+    }
 
     // Create or update texture
     if (!this.logoTexture) {

@@ -142,7 +142,7 @@ void main() {
         ? blend_factor
         : mix(blend_factor, 1.0, min((t - blend_delay) / (blend_delay + 1.), 1.0));
     vec4 color = mix(prev, samp, ease(mixFactor));
-    color = mix(color, samp, cubic(max(0., min(1., t - (blend_delay * .5)))));
+    color = mix(color, samp, ease(max(0., min(1., t - (blend_delay * .75)))));
     fragColor = color;
 }
 `;

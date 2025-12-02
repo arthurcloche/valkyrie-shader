@@ -60,7 +60,7 @@
 
       /* Footer section */
       .footer {
-        height: 500px;
+        height: 300px;
         width: 100%;
         position: relative;
       }
@@ -144,6 +144,7 @@
       const heroEffect = new ValkyrieEffect('#hero-container', {
         logoUrl: 'logo.png',
         logoMaxWidth: 800,
+        logoPosition: 'hero',
         loopDuration: 10,
       });
 
@@ -153,6 +154,8 @@
       const footerEffect = new ValkyrieEffect('#footer-container', {
         logoUrl: 'logo.png',
         logoMaxWidth: 800,
+        logoPosition: 'footer',
+        logoClipTop: 30,
         loopDuration: 12,
         lines: {
           spacing: 12,
