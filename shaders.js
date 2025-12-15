@@ -213,6 +213,151 @@ void main() {
 }
 `;
 
+// Bloom luminance extraction
+const bloomLuminanceFrag = `#version 300 es
+precision mediump float;
+
+in vec2 vTexCoord;
+out vec4 fragColor;
+
+uniform sampler2D uTexture;
+uniform float threshold;
+uniform float softKnee;
+
+void main() {
+    vec3 color = texture(uTexture, vTexCoord).rgb;
+    float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    float soft = luma - threshold + softKnee;
+    soft = clamp(soft / (2.0 * softKnee + 0.0001), 0.0, 1.0);
+    soft = soft * soft;
+    float contribution = max(soft, step(threshold, luma));
+    fragColor = vec4(color * contribution, 1.0);
+}
+`;
+
+// Gaussian blur horizontal
+const bloomBlurHFrag = `#version 300 es
+precision mediump float;
+
+in vec2 vTexCoord;
+out vec4 fragColor;
+
+uniform sampler2D uTexture;
+uniform vec2 resolution;
+uniform float radius;
+
+void main() {
+    vec2 texel = 1.0 / resolution;
+    vec3 result = vec3(0.0);
+    
+    // 9-tap gaussian weights
+    float weights[5] = float[](0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
+    
+    result += texture(uTexture, vTexCoord).rgb * weights[0];
+    for (int i = 1; i < 5; i++) {
+        vec2 offset = vec2(float(i) * radius, 0.0) * texel;
+        result += texture(uTexture, vTexCoord + offset).rgb * weights[i];
+        result += texture(uTexture, vTexCoord - offset).rgb * weights[i];
+    }
+    
+    fragColor = vec4(result, 1.0);
+}
+`;
+
+// Gaussian blur vertical
+const bloomBlurVFrag = `#version 300 es
+precision mediump float;
+
+in vec2 vTexCoord;
+out vec4 fragColor;
+
+uniform sampler2D uTexture;
+uniform vec2 resolution;
+uniform float radius;
+
+void main() {
+    vec2 texel = 1.0 / resolution;
+    vec3 result = vec3(0.0);
+    
+    float weights[5] = float[](0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
+    
+    result += texture(uTexture, vTexCoord).rgb * weights[0];
+    for (int i = 1; i < 5; i++) {
+        vec2 offset = vec2(0.0, float(i) * radius) * texel;
+        result += texture(uTexture, vTexCoord + offset).rgb * weights[i];
+        result += texture(uTexture, vTexCoord - offset).rgb * weights[i];
+    }
+    
+    fragColor = vec4(result, 1.0);
+}
+`;
+
+// Bloom composite with simplex noise + iridescent tint
+const bloomCompositeFrag = `#version 300 es
+precision mediump float;
+
+in vec2 vTexCoord;
+out vec4 fragColor;
+
+uniform sampler2D uScene;
+uniform sampler2D uBloom;
+uniform float time;
+uniform float intensity;
+uniform float noiseScale;
+
+vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
+
+float snoise(vec2 v) {
+    const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                        -0.577350269189626, 0.024390243902439);
+    vec2 i  = floor(v + dot(v, C.yy));
+    vec2 x0 = v - i + dot(i, C.xx);
+    vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+    vec4 x12 = x0.xyxy + C.xxzz;
+    x12.xy -= i1;
+    i = mod(i, 289.0);
+    vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+    vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+    m = m*m; m = m*m;
+    vec3 x = 2.0 * fract(p * C.www) - 1.0;
+    vec3 h = abs(x) - 0.5;
+    vec3 ox = floor(x + 0.5);
+    vec3 a0 = x - ox;
+    m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+    vec3 g;
+    g.x  = a0.x  * x0.x  + h.x  * x0.y;
+    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+    return 130.0 * dot(m, g);
+}
+
+vec3 pal(in float t, in vec3 a, in vec3 b, in vec3 c, in vec3 d) {
+    return a + b * cos(6.28318 * (c * t + d));
+}
+
+vec3 iridescent(float t) {
+    return pal(t, vec3(0.5), vec3(0.5), vec3(1.0, 1.0, 0.5), vec3(0.8, 0.90, 0.30));
+}
+
+void main() {
+    vec3 scene = texture(uScene, vTexCoord).rgb;
+    vec3 bloom = texture(uBloom, vTexCoord).rgb;
+    
+    // Very zoomed simplex for smooth color variation
+    float n = snoise(vTexCoord * noiseScale + time * 0.05) * 0.5 + 0.5;
+    
+    // Iridescent tint based on noise + position
+    vec3 tint = iridescent(n + vTexCoord.y * 0.3 + time * 0.1);
+    
+    // Apply tint to bloom
+    vec3 tintedBloom = bloom * tint;
+    
+    // Additive blend
+    vec3 result = scene + tintedBloom * intensity;
+    
+    fragColor = vec4(result, 1.0);
+}
+`;
+
 // Output/composite shader
 const outputFrag = `#version 300 es
 precision mediump float;

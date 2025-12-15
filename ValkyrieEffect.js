@@ -30,7 +30,14 @@ class ValkyrieEffect {
         spacing: 8.0,
         thick: 2.5,
       },
-      logoUrl: "logo.png",
+      bloom: {
+        threshold: 0.3,
+        softKnee: 0.1,
+        radius: 2.0,
+        intensity: 0.8,
+        noiseScale: 0.15,
+      },
+      logoUrl: "",
       logoMaxWidth: 800,
       logoPosition: "hero",
       logoClipTop: 30,
@@ -169,6 +176,16 @@ class ValkyrieEffect {
     this.programs.flow = this._createProgram(baseVert, flowFrag);
     this.programs.cascade = this._createProgram(baseVert, cascadeFrag);
     this.programs.lines = this._createProgram(baseVert, linesFrag);
+    this.programs.bloomLuminance = this._createProgram(
+      baseVert,
+      bloomLuminanceFrag
+    );
+    this.programs.bloomBlurH = this._createProgram(baseVert, bloomBlurHFrag);
+    this.programs.bloomBlurV = this._createProgram(baseVert, bloomBlurVFrag);
+    this.programs.bloomComposite = this._createProgram(
+      baseVert,
+      bloomCompositeFrag
+    );
     this.programs.output = this._createProgram(baseVert, outputFrag);
   }
 
@@ -221,37 +238,54 @@ class ValkyrieEffect {
     this.fbos.flow = this._createPingPongFBO(this.width, this.height);
     this.fbos.cascade = this._createPingPongFBO(this.width, this.height);
     this.fbos.lines = this._createFBO(this.width, this.height);
+    // Bloom at half res for performance
+    const bloomW = Math.floor(this.width / 2);
+    const bloomH = Math.floor(this.height / 2);
+    this.fbos.bloomLuminance = this._createFBO(bloomW, bloomH);
+    this.fbos.bloomBlurH = this._createFBO(bloomW, bloomH);
+    this.fbos.bloomBlurV = this._createFBO(bloomW, bloomH);
+    this.fbos.preBloom = this._createFBO(this.width, this.height);
   }
 
   _resizeFramebuffers() {
     const gl = this.gl;
-    const resize = (fboData) => {
+    const resize = (fboData, w, h) => {
       gl.bindTexture(gl.TEXTURE_2D, fboData.texture);
       gl.texImage2D(
         gl.TEXTURE_2D,
         0,
         gl.RGBA16F,
-        this.width,
-        this.height,
+        w,
+        h,
         0,
         gl.RGBA,
         gl.HALF_FLOAT,
         null
       );
-      fboData.width = this.width;
-      fboData.height = this.height;
+      fboData.width = w;
+      fboData.height = h;
     };
 
-    resize(this.fbos.flow.read);
-    resize(this.fbos.flow.write);
-    resize(this.fbos.cascade.read);
-    resize(this.fbos.cascade.write);
-    resize(this.fbos.lines);
+    resize(this.fbos.flow.read, this.width, this.height);
+    resize(this.fbos.flow.write, this.width, this.height);
+    resize(this.fbos.cascade.read, this.width, this.height);
+    resize(this.fbos.cascade.write, this.width, this.height);
+    resize(this.fbos.lines, this.width, this.height);
+    resize(this.fbos.preBloom, this.width, this.height);
+    // Bloom at half res
+    const bloomW = Math.floor(this.width / 2);
+    const bloomH = Math.floor(this.height / 2);
+    resize(this.fbos.bloomLuminance, bloomW, bloomH);
+    resize(this.fbos.bloomBlurH, bloomW, bloomH);
+    resize(this.fbos.bloomBlurV, bloomW, bloomH);
   }
 
   async _loadLogo() {
+    if (!this.config.logoUrl) return;
+
     return new Promise((resolve) => {
       this.logoImage = new Image();
+      this.logoImage.crossOrigin = "anonymous"; // Required for Webflow/CDN images
       this.logoImage.onload = () => {
         this._createLogoTexture();
         resolve();
@@ -522,12 +556,44 @@ class ValkyrieEffect {
       thick: cfg.lines.thick,
     });
 
-    // Output pass (to screen)
-    this._renderPass(this.programs.output, null, {
+    // Pre-bloom output pass (render scene to FBO for bloom input)
+    this._renderPass(this.programs.output, this.fbos.preBloom, {
       uTexture: this._bindTexture(this.fbos.cascade.read.texture, 0),
       uLines: this._bindTexture(this.fbos.lines.texture, 1),
       uFlow: this._bindTexture(this.fbos.flow.read.texture, 2),
       time: this.time,
+    });
+
+    // Bloom: luminance extraction
+    this._renderPass(this.programs.bloomLuminance, this.fbos.bloomLuminance, {
+      uTexture: this._bindTexture(this.fbos.preBloom.texture, 0),
+      threshold: cfg.bloom.threshold,
+      softKnee: cfg.bloom.softKnee,
+    });
+
+    // Bloom: horizontal blur
+    const bloomW = this.fbos.bloomLuminance.width;
+    const bloomH = this.fbos.bloomLuminance.height;
+    this._renderPass(this.programs.bloomBlurH, this.fbos.bloomBlurH, {
+      uTexture: this._bindTexture(this.fbos.bloomLuminance.texture, 0),
+      resolution: [bloomW, bloomH],
+      radius: cfg.bloom.radius,
+    });
+
+    // Bloom: vertical blur
+    this._renderPass(this.programs.bloomBlurV, this.fbos.bloomBlurV, {
+      uTexture: this._bindTexture(this.fbos.bloomBlurH.texture, 0),
+      resolution: [bloomW, bloomH],
+      radius: cfg.bloom.radius,
+    });
+
+    // Bloom composite (to screen)
+    this._renderPass(this.programs.bloomComposite, null, {
+      uScene: this._bindTexture(this.fbos.preBloom.texture, 0),
+      uBloom: this._bindTexture(this.fbos.bloomBlurV.texture, 1),
+      time: this.time,
+      intensity: cfg.bloom.intensity,
+      noiseScale: cfg.bloom.noiseScale,
     });
 
     //TO REMOVE IN PROD : Loop reset
@@ -551,6 +617,10 @@ class ValkyrieEffect {
     clear(this.fbos.cascade.read);
     clear(this.fbos.cascade.write);
     clear(this.fbos.lines);
+    clear(this.fbos.preBloom);
+    clear(this.fbos.bloomLuminance);
+    clear(this.fbos.bloomBlurH);
+    clear(this.fbos.bloomBlurV);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
@@ -610,5 +680,12 @@ class ValkyrieEffect {
     const linesFolder = gui.addFolder("Lines");
     linesFolder.add(this.config.lines, "spacing", 8.0, 24.0, 0.5);
     linesFolder.add(this.config.lines, "thick", 0.1, 8.0, 0.01);
+
+    const bloomFolder = gui.addFolder("Bloom");
+    bloomFolder.add(this.config.bloom, "threshold", 0.0, 1.0, 0.01);
+    bloomFolder.add(this.config.bloom, "softKnee", 0.0, 0.5, 0.01);
+    bloomFolder.add(this.config.bloom, "radius", 0.5, 8.0, 0.1);
+    bloomFolder.add(this.config.bloom, "intensity", 0.0, 2.0, 0.01);
+    bloomFolder.add(this.config.bloom, "noiseScale", 0.01, 1.0, 0.01);
   }
 }
