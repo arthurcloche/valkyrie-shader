@@ -246,13 +246,13 @@ uniform sampler2D uTexture;
 uniform vec2 resolution;
 uniform float radius;
 
+const float weights[5] = float[](0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
+
 void main() {
     vec2 texel = 1.0 / resolution;
     vec3 result = vec3(0.0);
     
     // 9-tap gaussian weights
-    float weights[5] = float[](0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
-    
     result += texture(uTexture, vTexCoord).rgb * weights[0];
     for (int i = 1; i < 5; i++) {
         vec2 offset = vec2(float(i) * radius, 0.0) * texel;
@@ -338,18 +338,23 @@ vec3 iridescent(float t) {
     return pal(t, vec3(0.5), vec3(0.5), vec3(1.0, 1.0, 0.5), vec3(0.8, 0.90, 0.30));
 }
 
+vec3 staturate(vec3 x) {
+    return clamp(x, vec3(0.0), vec3(1.0));
+}
+
+
 void main() {
     vec3 scene = texture(uScene, vTexCoord).rgb;
     vec3 bloom = texture(uBloom, vTexCoord).rgb;
     
     // Very zoomed simplex for smooth color variation
-    float n = snoise(vTexCoord * noiseScale + time * 0.05) * 0.5 + 0.5;
+    float n = snoise(vTexCoord * noiseScale + time * 0.05);
     
     // Iridescent tint based on noise + position
-    vec3 tint = iridescent(n + vTexCoord.y * 0.3 + time * 0.1);
+    vec3 tint = iridescent(n * 2. + vTexCoord.y * 4. + time * 0.1);
     
     // Apply tint to bloom
-    vec3 tintedBloom = bloom * tint;
+    vec3 tintedBloom =staturate(bloom * tint);
     
     // Additive blend
     vec3 result = scene + tintedBloom * intensity;
